@@ -67,8 +67,9 @@ contract Fraction is Ownable {
 
   function createPool(address assetAddress, bool isERC721, uint256 assetId, address buyTokenAddress,
                       address assetOwner, uint256 needToCollect) public {
-                        // TODO: find out piece cost
-    pools[poolsAmount] = Pool(buyTokenAddress, isERC721, needToCollect, 0, assetAddress, assetId, assetOwner, 1, false, false);
+    // We presume that we devide asset into 1000 pieces
+    uint256 peiceCost = needToCollect.div(1000);
+    pools[poolsAmount] = Pool(buyTokenAddress, isERC721, needToCollect, 0, assetAddress, assetId, assetOwner, peiceCost, false, false);
 
     emit NewPoolCreated(pools[poolsAmount]);
 
