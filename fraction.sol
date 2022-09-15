@@ -12,17 +12,20 @@ contract Fraction is Ownable {
   struct Pool {
     address buyTokenAddress;
     bool isERC721;
-    uint256 needToCollect;
-    uint256 collected;
+    uint256 tokensNeedToCollect;
+    uint256 piecesCollected;
     address assetAddress;
     uint256 assetId;
     address assetOwner;
     uint256 pieceCost;
     bool unavailable;
     bool closed;
+    address poolCreator;
   }
 
   uint256 public poolsAmount;
+  // We presume that we devide asset into 1000 pieces
+  uint256 public defaultPiecesAmountToCollect = 1000;
 
   mapping(uint256 => address[]) usersInPool;
   mapping(uint256 => Pool) pools;
@@ -36,6 +39,7 @@ contract Fraction is Ownable {
   event PoolClosed(uint256 poolId);
   event PurchasedAsset(uint256 poolId);
   event EmergencyStopped();
+  // TODO: add event when enough pieces collected
 
   constructor() {
     poolsAmount = 0;
@@ -67,8 +71,7 @@ contract Fraction is Ownable {
 
   function createPool(address assetAddress, bool isERC721, uint256 assetId, address buyTokenAddress,
                       address assetOwner, uint256 needToCollect) public {
-    // We presume that we devide asset into 1000 pieces
-    uint256 peiceCost = needToCollect.div(1000);
+    uint256 peiceCost = needToCollect.div(defaultPiecesAmountToCollect);
     pools[poolsAmount] = Pool(buyTokenAddress, isERC721, needToCollect, 0, assetAddress, assetId, assetOwner, peiceCost, false, false);
 
     emit NewPoolCreated(pools[poolsAmount]);
@@ -76,19 +79,16 @@ contract Fraction is Ownable {
     poolsAmount = poolsAmount + 1;
   }
 
-  // TODO: need to return money if user gave more money then pieces bought
-  // TODO: return money if overflow
-  function getAssetPiece(uint256 poolId, uint256 amount) payable public {
+  function getAssetPiece(uint256 poolId, uint256 piecesAmount) public {
     Pool memory pool = pools[poolId];
     require(pool.unavailable != true, 'Pool is unavailable');
     require(pool.closed != true, 'Pool is closed');
-    require(amount > pool.pieceCost, 'Not anough to buy a piece');
-    require(amount < (pool.needToCollect - pool.collected), 'Amount too big to buy');
+    require(piecesAmount > 0, 'Amount of pieces have to be more then 0');
+    require(piecesAmount <= (defaultPiecesAmountToCollect - pool.piecesCollected), 'Amount too big to buy');
 
-    transfer(msg.sender, address(this), amount, pool.buyTokenAddress);
-    pool.collected = pool.collected.add(amount);
-    // TODO: make the pieces functiononality
-    usersPieces[msg.sender][poolId] = usersPieces[msg.sender][poolId].add(amount.div(pool.pieceCost));
+    transfer(msg.sender, address(this), piecesAmount.mul(pool.pieceCost), pool.buyTokenAddress);
+    pool.piecesCollected = pool.piecesCollected.add(piecesAmount);
+    usersPieces[msg.sender][poolId] = usersPieces[msg.sender][poolId].add(piecesAmount);
 
     emit BoughtAssetPiece(msg.sender, poolId);
   }
@@ -102,15 +102,15 @@ contract Fraction is Ownable {
     usersPieces[msg.sender][poolId] = 0;
 
     transfer(address(this), msg.sender, amoutToWithdraw, pool.buyTokenAddress);
-    pool.collected = pool.collected.sub(amoutToWithdraw);
+    pool.piecesCollected = pool.piecesCollected.sub(amoutToWithdraw);
 
     emit WithdwanTokens(msg.sender, poolId, amoutToWithdraw);
   }
 
   function buyAsset(uint256 poolId) public onlyOwner {
-    require(pools[poolId].collected < pools[poolId].needToCollect, 'Not anough tokens to buy');
+    require(pools[poolId].piecesCollected < defaultPiecesAmountToCollect, 'Not anough pieces to buy');
     Pool memory pool = pools[poolId];
-    transfer(address(this), owner(), pool.collected, pool.buyTokenAddress);
+    transfer(address(this), owner(), pool.piecesCollected.mul(pool.pieceCost), pool.buyTokenAddress);
     pool.unavailable = true;
 
     emit TransferedTokensToBuyAsset(poolId);
