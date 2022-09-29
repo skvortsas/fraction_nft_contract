@@ -10,8 +10,10 @@ contract Fraction is Ownable {
   using SafeMath for uint256;
 
   struct Pool {
+    address poolCreator;
     address buyTokenAddress;
     bool isERC721;
+    uint256 piecesNeedToCollect;
     uint256 tokensNeedToCollect;
     uint256 piecesCollected;
     address assetAddress;
@@ -20,12 +22,13 @@ contract Fraction is Ownable {
     uint256 pieceCost;
     bool unavailable;
     bool closed;
-    address poolCreator;
   }
 
   uint256 public poolsAmount;
   // We presume that we devide asset into 1000 pieces
   uint256 public defaultPiecesAmountToCollect = 1000;
+  // Default creator share is 1%
+  uint256 public defaultCreatorShare = defaultPiecesAmountToCollect.div(100);
 
   mapping(uint256 => address[]) usersInPool;
   mapping(uint256 => Pool) pools;
@@ -39,7 +42,9 @@ contract Fraction is Ownable {
   event PoolClosed(uint256 poolId);
   event PurchasedAsset(uint256 poolId);
   event EmergencyStopped();
-  // TODO: add event when enough pieces collected
+  event EnoughPiecesCollected(uint256 poolId);
+  event ChangedDefaultPiecesAmount(uint256 newAmount);
+  event ChangedCreatorShare(uint256 newPercent);
 
   constructor() {
     poolsAmount = 0;
@@ -71,8 +76,9 @@ contract Fraction is Ownable {
 
   function createPool(address assetAddress, bool isERC721, uint256 assetId, address buyTokenAddress,
                       address assetOwner, uint256 needToCollect) public {
-    uint256 peiceCost = needToCollect.div(defaultPiecesAmountToCollect);
-    pools[poolsAmount] = Pool(buyTokenAddress, isERC721, needToCollect, 0, assetAddress, assetId, assetOwner, peiceCost, false, false);
+    uint256 peiceCost = needToCollect.div(defaultPiecesAmountToCollect.sub(defaultCreatorShare));
+    pools[poolsAmount] = Pool(msg.sender, buyTokenAddress, isERC721, defaultPiecesAmountToCollect, needToCollect, defaultCreatorShare, assetAddress, assetId, assetOwner, peiceCost, false, false);
+    usersPieces[msg.sender][poolsAmount] = defaultCreatorShare;
 
     emit NewPoolCreated(pools[poolsAmount]);
 
@@ -84,13 +90,17 @@ contract Fraction is Ownable {
     require(pool.unavailable != true, 'Pool is unavailable');
     require(pool.closed != true, 'Pool is closed');
     require(piecesAmount > 0, 'Amount of pieces have to be more then 0');
-    require(piecesAmount <= (defaultPiecesAmountToCollect - pool.piecesCollected), 'Amount too big to buy');
+    require(piecesAmount <= (pool.piecesNeedToCollect - pool.piecesCollected), 'Amount too big to buy');
 
     transfer(msg.sender, address(this), piecesAmount.mul(pool.pieceCost), pool.buyTokenAddress);
     pool.piecesCollected = pool.piecesCollected.add(piecesAmount);
     usersPieces[msg.sender][poolId] = usersPieces[msg.sender][poolId].add(piecesAmount);
 
     emit BoughtAssetPiece(msg.sender, poolId);
+
+    if (pool.piecesCollected == pool.piecesNeedToCollect) {
+      emit EnoughPiecesCollected(poolId);
+    }
   }
 
   function withdraw(uint256 poolId) public {
@@ -108,7 +118,7 @@ contract Fraction is Ownable {
   }
 
   function buyAsset(uint256 poolId) public onlyOwner {
-    require(pools[poolId].piecesCollected < defaultPiecesAmountToCollect, 'Not anough pieces to buy');
+    require(pools[poolId].piecesCollected < pools[poolId].piecesNeedToCollect, 'Not anough pieces to buy');
     Pool memory pool = pools[poolId];
     transfer(address(this), owner(), pool.piecesCollected.mul(pool.pieceCost), pool.buyTokenAddress);
     pool.unavailable = true;
@@ -132,6 +142,18 @@ contract Fraction is Ownable {
     pools[poolId].unavailable = false;
 
     emit PurchasedAsset(poolId);
+  }
+
+  function changeDefaultPiecesAmountToCollect(uint256 newAmount) public onlyOwner {
+    defaultPiecesAmountToCollect = newAmount;
+
+    emit ChangedDefaultPiecesAmount(newAmount);
+  }
+
+  function changeCreatorShare(uint256 newPercent) public onlyOwner {
+    defaultCreatorShare = (defaultPiecesAmountToCollect.div(100)).mul(newPercent);
+
+    emit ChangedCreatorShare(newPercent);
   }
 
   function emergencyStop() public onlyOwner {
