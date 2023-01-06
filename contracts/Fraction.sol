@@ -7,14 +7,12 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155.sol";
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import '@chainlink/contracts/src/v0.8/ChainlinkClient.sol';
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 import "./ActivePools.sol";
 
-contract Fraction is Ownable, ChainlinkClient, ActivePools {
+contract Fraction is Ownable, ActivePools {
   using SafeMath for uint256;
-  using Chainlink for Chainlink.Request;
 
   struct Pool {
     address poolCreator;
@@ -33,15 +31,12 @@ contract Fraction is Ownable, ChainlinkClient, ActivePools {
 
   uint256 MAX_UINT = 2**256 - 1;
   AggregatorV3Interface internal ethPriceFeed;
-  uint256 public lastTimeStamp;
-  uint256 public immutable interval;
   uint256 public poolsAmount;
-  // We presume that we devide asset into 1000 pieces
   uint256 public defaultPiecesAmountToCollect = 1000;
   // Default creator share is 1%
   uint256 public defaultCreatorShare = defaultPiecesAmountToCollect.div(100);
 
-  mapping(uint256 => address[]) public usersInPool;
+  mapping(address => Pool[]) public userPools;
   mapping(uint256 => Pool) public pools;
   // user address => poolId will return pieces in pool by user
   mapping(address => mapping(uint256 => uint256)) public usersPieces;
@@ -53,27 +48,24 @@ contract Fraction is Ownable, ChainlinkClient, ActivePools {
   event ChangedDefaultPiecesAmount(uint256 newAmount);
   event ChangedCreatorShare(uint256 newPercent);
 
-  constructor(uint256 updateInterval) {
-    interval = updateInterval;
-    lastTimeStamp = block.timestamp;
-    // add interface address into constructor
-    ethPriceFeed = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
+  constructor(
+    address ethPriceFeedAddress
+  ) {
+    ethPriceFeed = AggregatorV3Interface(ethPriceFeedAddress);
   }
 
-  // function bytesToUint(bytes memory b) internal pure returns (uint256){
-  //       uint256 number;
-  //       for(uint i=0;i<b.length;i++){
-  //           number = number + uint(uint8(b[i]))*(2**(8*(b.length-(i+1))));
-  //       }
-  //   return number;
-  // }
-
-  function transfer(address _from, address _to, uint256 _amount, address _transferToken) internal {
-    if (_from == address(this)) {
-      IERC20(_transferToken).transfer(_to, _amount);
-    } else {
-      IERC20(_transferToken).transferFrom(_from, _to, _amount);
-    }
+  function transfer(address _from, address payable _to, uint256 _amount, address _transferToken) internal {
+    if (_transferToken == address(0)) {
+            if (address(this) != _to) {
+                _to.call{ value: _amount };
+            }
+        } else {
+            if (_from == address(this)) {
+                IERC20(_transferToken).transfer(_to, _amount);
+            } else {
+                IERC20(_transferToken).transferFrom(_from, _to, _amount);
+            }
+        }
   }
 
   function assetTransfer(address _from, address _to, address _transferAssetAddress, bool _isERC721, uint256 _assetId) internal {
@@ -104,8 +96,8 @@ contract Fraction is Ownable, ChainlinkClient, ActivePools {
     poolsAmount = poolsAmount + 1;
   }
 
-  function buyAssetPiece(uint256 poolId, uint256 piecesAmount) external {
-    Pool memory pool = pools[poolId];
+  function buyAssetPiece(uint256 poolId, uint256 piecesAmount) external payable {
+    Pool storage pool = pools[poolId];
     require(pool.unavailable != true, 'Pool is unavailable');
     require(pool.closed != true, 'Pool is closed');
     require(piecesAmount > 0, 'Amount of pieces have to be more then 0');
@@ -113,7 +105,7 @@ contract Fraction is Ownable, ChainlinkClient, ActivePools {
 
     pool.piecesCollected = pool.piecesCollected.add(piecesAmount);
     usersPieces[msg.sender][poolId] = usersPieces[msg.sender][poolId].add(piecesAmount);
-    transfer(msg.sender, address(this), piecesAmount.mul(pool.pieceCost), pool.buyTokenAddress);
+    transfer(msg.sender, payable(address(this)), piecesAmount.mul(pool.pieceCost), pool.buyTokenAddress);
 
     if (pool.piecesCollected >= pool.piecesNeedToCollect) {
       pool.unavailable = true;
@@ -125,36 +117,16 @@ contract Fraction is Ownable, ChainlinkClient, ActivePools {
     // We presume that piece cost is always > 0
     require(pool.pieceCost > 0,'Pool does not exist');
     require(pool.unavailable != true, 'Pool is unavailable');
+    require(usersPieces[msg.sender][poolId] > 0, 'User does not have any pieces');
     uint256 amoutToWithdraw = (usersPieces[msg.sender][poolId]).mul(pool.pieceCost);
     usersPieces[msg.sender][poolId] = 0;
     pool.piecesCollected = pool.piecesCollected.sub(amoutToWithdraw);
-    transfer(address(this), msg.sender, amoutToWithdraw, pool.buyTokenAddress);
+    transfer(address(this), payable(msg.sender), amoutToWithdraw, pool.buyTokenAddress);
   }
 
   function buyAsset(uint256 poolId) internal {
     Pool memory pool = pools[poolId];
-    // pool.unavailable = true;
-    transfer(address(this), owner(), pool.piecesCollected.mul(pool.pieceCost), pool.buyTokenAddress);
-
-    // TODO: move all constants to constructor
-    Chainlink.Request memory req = buildChainlinkRequest('7da2702f37fd48e5b1b9a5715e3509b6', address(this), this.fulfill.selector);
-    req.add('get', string(abi.encodePacked('https://platform.prosper.so/buy/', Strings.toHexString(pool.assetAddress), '/', Strings.toString(pool.assetId), '/', Strings.toHexString(pool.assetOwner))));
-    req.add('path', 'result');
-    sendChainlinkRequest(req, (1 * LINK_DIVISIBILITY) / 10);
-  }
-
-  function askBotToFinalize() private {
-    Chainlink.Request memory req = buildChainlinkRequest('7da2702f37fd48e5b1b9a5715e3509b6', address(this), this.fulfill.selector);
-    req.add('get', 'https://platform.prosper.so/finalize-purchase');
-    req.add('path', 'result');
-    sendChainlinkRequest(req, (1 * LINK_DIVISIBILITY) / 10);
-  }
-
-  function fulfill(bytes32 _requestId, bytes calldata _result) public recordChainlinkFulfillment(_requestId) {
-    // finished result returned from askBotToFinalize function
-    if (keccak256(_result) != keccak256('finished')) {
-      askBotToFinalize();
-    }
+    transfer(address(this), payable(owner()), pool.piecesCollected.mul(pool.pieceCost), pool.buyTokenAddress);
   }
 
   function closePool(uint256 poolId) public onlyOwner {
@@ -168,7 +140,7 @@ contract Fraction is Ownable, ChainlinkClient, ActivePools {
 
     if (!success) {
       closePool(poolId);
-      transfer(msg.sender, address(this), returnAmount, pools[poolId].buyTokenAddress);
+      transfer(msg.sender, payable(address(this)), returnAmount, pools[poolId].buyTokenAddress);
     } else {
       assetTransfer(msg.sender, address(this), assetAddress, pools[poolId].isERC721, pools[poolId].assetId);
     }
@@ -206,62 +178,49 @@ contract Fraction is Ownable, ChainlinkClient, ActivePools {
         return price;
   }
 
-  function checkIfNeedToFulfill() public {
+  function checkIfNeedToFulfill() public view returns (uint256) {
     uint256 poolIdToServe = MAX_UINT;
     uint256[] memory activePoolsIDs = ActivePools.getActivePoolsIDs();
 
     for (uint i = 0; i < activePoolsIDs.length; i++) {
-      if (pools[activePoolsIDs[i]].piecesCollected >= pools[activePoolsIDs[i]].piecesNeedToCollect) {
-        poolIdToServe = activePoolsIDs[i];
+      if (pools[activePoolsIDs[i] - 1].piecesCollected >= pools[activePoolsIDs[i] - 1].piecesNeedToCollect) {
+        poolIdToServe = activePoolsIDs[i] - 1;
         break;
       }
     }
 
     if (poolIdToServe < MAX_UINT) {
-      buyAsset(poolIdToServe);
+      return poolIdToServe;
     }
+
+    return MAX_UINT;
+  }
+
+  function contractHasAsset(Pool memory pool) private view returns(bool) {
+    if (pool.isERC721) {
+      return IERC721(pool.assetAddress).ownerOf(pool.assetId) == address(this);
+    }
+
+    return IERC1155(pool.assetAddress).balanceOf(address(this), pool.assetId) > 0;
   }
 
   function withdrawAssetWithFullFractions(uint256 poolId) public {
-    // TODO: add require if contract has the asset
     require(usersPieces[msg.sender][poolId] >= pools[poolId].piecesNeedToCollect, 'You do not own all the pieces');
     require(pools[poolId].unavailable == true, 'The pool is not finished yet');
+    require(contractHasAsset(pools[poolId]), 'Contract does not own the asset');
 
     usersPieces[msg.sender][poolId] = 0;
     assetTransfer(address(this), msg.sender, pools[poolId].assetAddress, pools[poolId].isERC721, pools[poolId].assetId);
   }
 
-  // function checkUpkeep(
-  //     bytes calldata checkData
-  // ) external view override returns (bool upkeepNeeded, bytes memory performData) {
-  //   if (keccak256(checkData) == keccak256('hourly')) {
-  //     uint256 poolIdToServe = -1;
-  //     uint256[] activePoolsIDs = getActivePoolsIDs();
-  //     for (uint i; i < activePoolsIDs.length; i++) {
-  //       if (pools[activePoolsIDs[i]].piecesCollected >= pools[activePoolsIDs[i]].piecesNeedToCollect) {
-  //         poolIdToServe = activePoolsIDs[i];
-  //         break;
-  //       }
-  //     }
-  //     upkeepNeeded = ((block.timestamp - lastTimeStamp) > interval) && anyOfPoolsIsFull > -1;
-  //     performData = string(abi.encodePacked('buy asset ', Strings.toString(poolIdToServe)));
-  //   }
+  function getActivePools() view public returns(Pool[] memory) {
+    uint256[] memory activePoolsIDs = ActivePools.getActivePoolsIDs();
+    Pool[] memory tmpActivePools = new Pool[](activePoolsIDs.length);
+    for (uint i = 0; i < activePoolsIDs.length; i++) {
+      Pool storage pool = pools[i];
+      tmpActivePools[i] = pool;
+    }
 
-  //   return (upkeepNeeded, performData);
-  // }
-
-  // function performUpkeep(
-  //   // I guess I can put custom performData, not like checkData
-  //     bytes calldata performData
-  // ) external override {
-  //   if (keccak256(performData[:9]) == keccak256('buy asset')) {
-  //     bytes poolIdBytes = performData[10:];
-  //     uint256 poolId = bytesToUint(poolIdBytes);
-
-  //     if ((block.timestamp - lastTimeStamp) > interval) && pools[poolId].piecesCollected >= pools[poolId].piecesNeedToCollect) {
-  //       lastTimeStamp = block.timestamp;
-  //       buyAsset(poolId);
-  //     }
-  //   }
-  // }
+    return tmpActivePools;
+  }
 }

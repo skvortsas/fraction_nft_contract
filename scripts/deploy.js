@@ -4,6 +4,7 @@
 // You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
 // will compile your contracts, add the Hardhat Runtime Environment's members to the
 // global scope, and execute the script.
+const { formatBytes32String, parseBytes32String } = require("ethers/lib/utils");
 const hre = require("hardhat");
 
 async function main() {
@@ -20,7 +21,9 @@ async function main() {
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   const Lock = await hre.ethers.getContractFactory("Fraction");
-  const lock = await Lock.deploy();
+  const lock = await Lock.deploy(
+    '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'
+    );
 
   const res = await lock.deployed();
 

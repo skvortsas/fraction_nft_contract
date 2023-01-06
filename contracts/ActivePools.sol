@@ -8,10 +8,10 @@ contract ActivePools {
     }
 
     uint256 nextNodeID = 1;
-    mapping(uint256 => ActivePool) activePools;
-    uint256 head;
-    uint256 tail;
-    uint256 count = 0;
+    mapping(uint256 => ActivePool) internal activePools;
+    uint256 private head;
+    uint256 private tail;
+    uint256 private count = 0;
 
     function append() internal {
         if (tail == 0) {
