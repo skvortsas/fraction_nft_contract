@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -8,10 +8,11 @@ import "@openzeppelin/contracts/interfaces/IERC1155.sol";
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import '@chainlink/contracts/src/v0.8/ChainlinkClient.sol';
 import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
-import "./ActivePools.sol";
+import "./ActiveItems.sol";
 
-contract Fraction is Ownable, ActivePools {
+contract Fraction is Ownable, ChainlinkClient, ActiveItems {
   using SafeMath for uint256;
 
   struct Pool {
@@ -35,6 +36,7 @@ contract Fraction is Ownable, ActivePools {
   uint256 public defaultPiecesAmountToCollect = 1000;
   // Default creator share is 1%
   uint256 public defaultCreatorShare = defaultPiecesAmountToCollect.div(100);
+  address public marketpalceContract;
 
   mapping(address => Pool[]) public userPools;
   mapping(uint256 => Pool) public pools;
@@ -54,18 +56,23 @@ contract Fraction is Ownable, ActivePools {
     ethPriceFeed = AggregatorV3Interface(ethPriceFeedAddress);
   }
 
+  modifier onlyMarketplace() {
+    require(msg.sender == marketpalceContract, 'Only marketplace can call this function');
+    _;
+  }
+
   function transfer(address _from, address payable _to, uint256 _amount, address _transferToken) internal {
     if (_transferToken == address(0)) {
-            if (address(this) != _to) {
-                _to.call{ value: _amount };
-            }
-        } else {
-            if (_from == address(this)) {
-                IERC20(_transferToken).transfer(_to, _amount);
-            } else {
-                IERC20(_transferToken).transferFrom(_from, _to, _amount);
-            }
-        }
+      if (address(this) != _to) {
+        _to.call{ value: _amount };
+      }
+    } else {
+      if (_from == address(this)) {
+        IERC20(_transferToken).transfer(_to, _amount);
+      } else {
+        IERC20(_transferToken).transferFrom(_from, _to, _amount);
+      }
+    }
   }
 
   function assetTransfer(address _from, address _to, address _transferAssetAddress, bool _isERC721, uint256 _assetId) internal {
@@ -89,7 +96,7 @@ contract Fraction is Ownable, ActivePools {
     uint256 peiceCost = needToCollect.div(defaultPiecesAmountToCollect.sub(defaultCreatorShare));
     pools[poolsAmount] = Pool(msg.sender, buyTokenAddress, isERC721, defaultPiecesAmountToCollect, needToCollect, defaultCreatorShare, assetAddress, assetId, assetOwner, peiceCost, false, false);
     usersPieces[msg.sender][poolsAmount] = defaultCreatorShare;
-    ActivePools.append();
+    ActiveItems.append();
 
     emit NewPoolCreated(pools[poolsAmount]);
 
@@ -180,7 +187,7 @@ contract Fraction is Ownable, ActivePools {
 
   function checkIfNeedToFulfill() public view returns (uint256) {
     uint256 poolIdToServe = MAX_UINT;
-    uint256[] memory activePoolsIDs = ActivePools.getActivePoolsIDs();
+    uint256[] memory activePoolsIDs = ActiveItems.getActiveItemsIDs();
 
     for (uint i = 0; i < activePoolsIDs.length; i++) {
       if (pools[activePoolsIDs[i] - 1].piecesCollected >= pools[activePoolsIDs[i] - 1].piecesNeedToCollect) {
@@ -214,7 +221,7 @@ contract Fraction is Ownable, ActivePools {
   }
 
   function getActivePools() view public returns(Pool[] memory) {
-    uint256[] memory activePoolsIDs = ActivePools.getActivePoolsIDs();
+    uint256[] memory activePoolsIDs = ActiveItems.getActiveItemsIDs();
     Pool[] memory tmpActivePools = new Pool[](activePoolsIDs.length);
     for (uint i = 0; i < activePoolsIDs.length; i++) {
       Pool storage pool = pools[i];
@@ -222,5 +229,19 @@ contract Fraction is Ownable, ActivePools {
     }
 
     return tmpActivePools;
+  }
+
+  function setMarketplaceContract(address contractAddress) external onlyOwner {
+    marketpalceContract = contractAddress;
+  }
+
+  function transferTokensViaMarketplace(
+    address seller,
+    address buyer,
+    uint256 poolId,
+    uint256 amount
+  ) public onlyMarketplace {
+    usersPieces[seller][poolId] -= amount;
+    usersPieces[buyer][poolId] += amount;
   }
 }

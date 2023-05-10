@@ -1,0 +1,535 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_fractionContractAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "AlreadyListed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoProceeds",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotEnoughPieces",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "NotListed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PiecesAmountMustBeAboveZero",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PriceMustBeAboveZero",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ListingCanceled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "piecesBought",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "PiecesBought",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "piecesAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "PiecesListed",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "buyPieces",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      }
+    ],
+    "name": "cancelListing",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getActiveItemsIDs",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getActiveListings",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "poolId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "creator",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "sellToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "piecesToSell",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "piecesTotalInPool",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "assetAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "assetId",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Marketplace.Listing[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sellerAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getListing",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "poolId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "creator",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "sellToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "piecesToSell",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "piecesTotalInPool",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "assetAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "assetId",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Marketplace.Listing",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getProceeds",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "piecesToSell",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "sellToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "piecesCollected",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "assetAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "assetId",
+        "type": "uint256"
+      }
+    ],
+    "name": "listPieces",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "listings",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "sellToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "piecesToSell",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "piecesTotalInPool",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "assetAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "assetId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "newPrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "newPiecesAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateListing",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "withdrawProceeds",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

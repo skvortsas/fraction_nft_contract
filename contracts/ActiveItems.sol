@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.16;
 
-contract ActivePools {
-    struct ActivePool {
+contract ActiveItems {
+    struct ActiveItem {
         uint256 next;
         uint256 prev;
     }
 
     uint256 nextNodeID = 1;
-    mapping(uint256 => ActivePool) internal activePools;
+    mapping(uint256 => ActiveItem) internal activeItems;
     uint256 private head;
     uint256 private tail;
     uint256 private count = 0;
@@ -18,8 +18,8 @@ contract ActivePools {
             head = nextNodeID;
             tail = nextNodeID;
         } else {
-            activePools[tail].next = nextNodeID;
-            activePools[nextNodeID].prev = tail;
+            activeItems[tail].next = nextNodeID;
+            activeItems[nextNodeID].prev = tail;
             tail = nextNodeID;
         }
 
@@ -28,45 +28,45 @@ contract ActivePools {
     }
 
     function validNode(uint256 nodeID) internal view returns (bool) {
-        return nodeID == head || activePools[nodeID].prev != 0;
+        return nodeID == head || activeItems[nodeID].prev != 0;
     }
 
     function remove(uint256 nodeID) internal {
         require(validNode(nodeID));
 
-        ActivePool storage activePool = activePools[nodeID];
+        ActiveItem storage activePool = activeItems[nodeID];
 
         // Update head and tail.
         if (tail == nodeID) {
-            tail = activePools[nodeID].prev;
+            tail = activeItems[nodeID].prev;
         }
         if (head == nodeID) {
-            head = activePools[nodeID].next;
+            head = activeItems[nodeID].next;
         }
 
         // Update previous node's next pointer.
         if (activePool.prev != 0) {
-            activePools[activePool.prev].next = activePool.next;
+            activeItems[activePool.prev].next = activePool.next;
         }
 
         // Update next node's previous pointer.
         if (activePool.next != 0) {
-            activePools[activePool.next].prev = activePool.prev;
+            activeItems[activePool.next].prev = activePool.prev;
         }
 
         // Reclaim storage for the removed node.
-        delete activePools[nodeID];
+        delete activeItems[nodeID];
 
         count -= 1;
     }
 
-    function getActivePoolsIDs() public view returns (uint256[] memory ids) {
+    function getActiveItemsIDs() public view returns (uint256[] memory ids) {
         ids = new uint256[](count);
 
         uint256 current = head;
         for (uint256 i = 0; i < count; i++) {
             ids[i] = current;
-            current = activePools[current].next;
+            current = activeItems[current].next;
         }
     }
 }

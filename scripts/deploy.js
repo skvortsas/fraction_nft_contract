@@ -20,14 +20,21 @@ async function main() {
 
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const Lock = await hre.ethers.getContractFactory("Fraction");
-  const lock = await Lock.deploy(
-    '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'
-    );
+  // const Fraction = await hre.ethers.getContractFactory("Fraction");
+  // const fraction = await Fraction.deploy(
+  //   '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'
+  //   );
 
-  const res = await lock.deployed();
+  // const res = await fraction.deployed();
 
-  console.log(`contract deployed on ${res.address}`);
+  // console.log(`Fraction contract deployed on ${res.address}`);
+
+  const Marketplace = await hre.ethers.getContractFactory('Marketplace');
+  const marketplace = await Marketplace.deploy('0xd1EB66A13126459677b98cc0E87357d4E86401aa');
+
+  const marketplaceRes = await marketplace.deployed();
+
+  console.log(`Marketplace contract deployed on ${marketplaceRes.address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

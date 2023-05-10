@@ -5,21 +5,6 @@
         "internalType": "address",
         "name": "ethPriceFeedAddress",
         "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "jobId",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "botBuyUrl",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "botFinalizeUrl",
-        "type": "string"
       }
     ],
     "stateMutability": "nonpayable",
@@ -220,30 +205,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "activePools",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "next",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "prev",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "poolId",
         "type": "uint256"
       },
@@ -255,7 +216,7 @@
     ],
     "name": "buyAssetPiece",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -287,8 +248,14 @@
   {
     "inputs": [],
     "name": "checkIfNeedToFulfill",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -404,21 +371,16 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "getActiveItemsIDs",
+    "outputs": [
       {
-        "internalType": "bytes32",
-        "name": "_requestId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_result",
-        "type": "bytes"
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
       }
     ],
-    "name": "fulfill",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -498,19 +460,6 @@
   },
   {
     "inputs": [],
-    "name": "getActivePoolsIDs",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "ids",
-        "type": "uint256[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "getLatestEthPrice",
     "outputs": [
       {
@@ -524,12 +473,12 @@
   },
   {
     "inputs": [],
-    "name": "lastTimeStamp",
+    "name": "marketpalceContract",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "address",
         "name": "",
-        "type": "uint256"
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -646,11 +595,52 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setMarketplaceContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "newOwner",
         "type": "address"
       }
     ],
     "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "poolId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "transferTokensViaMarketplace",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
