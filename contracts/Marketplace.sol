@@ -5,6 +5,7 @@ import "./Fraction.sol";
 import "./ActiveItems.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 error AlreadyListed(uint256 poolId, address seller);
 error NotListed(uint256 poolId, address seller);
